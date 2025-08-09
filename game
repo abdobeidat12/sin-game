@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>لعبة سين جيم</title>
+<style>
+  body { font-family: Arial, sans-serif; direction: rtl; text-align: center; padding: 20px; background: #f0f0f0; }
+  #game, #addQuestion { background: #fff; padding: 20px; border-radius: 10px; max-width: 600px; margin: 20px auto; box-shadow: 0 0 10px #ccc; }
+  button { padding: 10px 20px; margin: 10px; font-size: 16px; cursor: pointer; border-radius: 5px; }
+  .option { display: block; margin: 10px auto; padding: 10px; background: #e0e0e0; border: none; width: 80%; }
+  .option:hover { background: #c0c0c0; }
+  #timer { font-size: 20px; color: #d9534f; margin-bottom: 10px; }
+  #score { font-size: 18px; margin: 10px 0; }
+  label { display: block; margin-top: 10px; font-weight: bold; }
+  input, select, textarea { width: 90%; padding: 8px; margin: 5px auto; border-radius: 5px; border: 1px solid #ccc; }
+</style>
+</head>
+<body>
+
+<h1>لعبة سين جيم</h1>
+
+<div id="menu">
+  <button onclick="startGame('single')">العب فردي</button>
+  <button onclick="startGame('multi')">العب جماعي على نفس الجهاز</button>
+  <button onclick="showAddQuestion()">أضف سؤال جديد</button>
+</div>
+
+<div id="game" style="display:none;">
+  <div id="timer"></div>
+  <div id="score"></div>
+  <div id="question"></div>
+  <div id="options"></div>
+  <button onclick="nextQuestion()">التالي</button>
+  <button onclick="endGame()">إنهاء اللعبة</button>
+</div>
+
+<div id="addQuestion" style="display:none;">
+  <h2>أضف سؤال جديد</h2>
+  <label>السؤال:</label>
+  <textarea id="newQuestion" rows="2"></textarea>
+  
+  <label>الإجابة الصحيحة:</label>
+  <input type="text" id="newAnswer" />
+  
+  <label>خيارات أخرى (3 خيارات، مفصولة بفواصل):</label>
+  <input type="text" id="newOptions" placeholder="مثلاً: خيار1, خيار2, خيار3" />
+  
+  <label>التصنيف:</label>
+  <select id="newCategory">
+    <option>جغرافيا</option>
+    <option>تاريخ</option>
+    <option>علوم</option>
+    <option>فنون وثقافة</option>
+    <option>رياضة</option>
+  </select>
+  
+  <button onclick="addQuestion()">إضافة السؤال</button>
+  <button onclick="hideAddQuestion()">إلغاء</button>
+</div>
+
+<script>
+let questions = [
+  {category:"جغرافيا", question:"ما هي عاصمة اليابان؟", answer:"طوكيو", options:["طوكيو","باريس","القاهرة","بيروت"]},
+  {category:"تاريخ", question:"في أي عام بدأ الحرب العالمية الثانية؟", answer:"1939", options:["1939","1914","1945","1950"]},
+  {category:"علوم", question:"ما هو الكوكب الأحمر؟", answer:"المريخ", options:["المريخ","الزهرة","المشتري","الأرض"]},
+  {category:"فنون وثقافة", question:"من رسم لوحة الموناليزا؟", answer:"ليوناردو دافنشي", options:["ليوناردو دافنشي","بيكاسو","رامبرانت","فان غوخ"]},
+  {category:"رياضة", question:"كم عدد اللاعبين في فريق كرة القدم؟", answer:"11 لاعبًا", options:["9 لاعبين","10 لاعبين","11 لاعبًا","12 لاعبًا"]}
+];
+
+let currentQuestionIndex = 0;
+let score = 0;
+let timer;
+let timeLeft = 15;
+let gameMode = 'single';
+let players = ['اللاعب 1', 'اللاعب 2'];
+let currentPlayerIndex = 0;
+
+const timerEl = document.getElementById('timer');
+const scoreEl = document.getElementById('score');
+const questionEl = document.getElementById('question');
+const optionsEl = document.getElementById('options');
+const gameDiv = document.getElementById('game');
+const menuDiv = document.getElementById('menu');
+const addQuestionDiv = document.getElementById('addQuestion');
+
+function startGame(mode){
+  gameMode = mode;
+  currentQuestionIndex = 0;
+  score = 0;
+  currentPlayerIndex = 0;
+  menuDiv.style.display = 'none';
+  addQuestionDiv.style.display = 'none';
+  gameDiv.style.display = 'block';
+  updateScore();
+  showQuestion();
+  startTimer();
+}
+
+function showQuestion(){
+  if(currentQuestionIndex >= questions.length){
+    alert(`انتهت الأسئلة! النتيجة النهائية: ${score} نقطة.`);
+    endGame();
+    return;
+  }
+  const q = questions[currentQuestionIndex];
+  questionEl.textContent = `السؤال (${q.category}): ${q.question}`;
+  optionsEl.innerHTML = '';
+  q.options.forEach(option => {
+    const btn = document.createElement('button');
+    btn.textContent = option;
+    btn.className = 'option';
+    btn.onclick = () => selectOption(option);
+    optionsEl.appendChild(btn);
+  });
+}
+
+function selectOption(selected){
+  clearInterval(timer);
+  const q = questions[currentQuestionIndex];
+  if(selected === q.answer){
+    alert('إجابة صحيحة!');
+    score += 1;
+  } else {
+    alert(`إجابة خاطئة! الإجابة الصحيحة هي: ${q.answer}`);
+  }
+  updateScore();
+}
+
+function nextQuestion(){
+  clearInterval(timer);
+  currentQuestionIndex++;
+  timeLeft = 15;
+  showQuestion();
+  startTimer();
+}
+
+function startTimer(){
+  timeLeft = 15;
+  timerEl.textContent = `الوقت المتبقي: ${timeLeft} ثانية`;
+  timer = setInterval(() => {
+    timeLeft--;
+    timerEl.textContent = `الوقت المتبقي: ${timeLeft} ثانية`;
+    if(timeLeft <= 0){
+      clearInterval(timer);
+      alert(`انتهى الوقت! الإجابة الصحيحة هي: ${questions[currentQuestionIndex].answer}`);
+      currentQuestionIndex++;
+      if(currentQuestionIndex < questions.length){
+        showQuestion();
+        startTimer();
+      } else {
+        alert(`انتهت الأسئلة! النتيجة النهائية: ${score} نقطة.`);
+        endGame();
+      }
+    }
+  }, 1000);
+}
+
+function updateScore(){
+  scoreEl.textContent = `النقاط: ${score}`;
+}
+
+function endGame(){
+  clearInterval(timer);
+  alert(`انتهت اللعبة! مجموع نقاطك: ${score}`);
+  gameDiv.style.display = 'none';
+  menuDiv.style.display = 'block';
+}
+
+function showAddQuestion(){
+  menuDiv.style.display = 'none';
+  addQuestionDiv.style.display = 'block';
+}
+
+function hideAddQuestion(){
+  addQuestionDiv.style.display = 'none';
+  menuDiv.style.display = 'block';
+}
+
+function addQuestion(){
+  const q = document.getElementById('newQuestion').value.trim();
+  const a = document.getElementById('newAnswer').value.trim();
+  const opts = document.getElementById('newOptions').value.trim();
+  const cat = document.getElementById('newCategory').value;
+  if(!q || !a || !opts){
+    alert('يرجى ملء كل الحقول');
+    return;
+  }
+  let optionsArray = opts.split(',').map(o => o.trim());
+  if(optionsArray.length !== 3){
+    alert('يجب إدخال 3 خيارات أخرى مفصولة بفواصل');
+    return;
+  }
+  optionsArray.push(a);
+  // خلط الخيارات عشوائيًا
+  optionsArray = optionsArray.sort(() => Math.random() - 0.5);
+  
+  questions.push({category: cat, question: q, answer: a, options: optionsArray});
+  alert('تمت إضافة السؤال بنجاح!');
+  // إعادة ضبط الحقول
+  document.getElementById('newQuestion').value = '';
+  document.getElementById('newAnswer').value = '';
+  document.getElementById('newOptions').value = '';
+  hideAddQuestion();
+}
+</script>
+
+</body>
+</html>
